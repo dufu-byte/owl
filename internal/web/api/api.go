@@ -99,8 +99,8 @@ func setupRouter(r *gin.Engine, uc *Usecase) {
 		ctx.Redirect(http.StatusPermanentRedirect, staticPrefix+"/"+"index.html")
 	})
 
-	auth := web.AuthMiddleware(uc.Conf.Server.HTTP.JwtSecret)
-	r.GET("/health", web.WrapH(uc.getHealth))
+	auth := AuthMiddleware(uc.Conf.Server.HTTP.JwtSecret, uc.Conf.Server.HTTP.AuthURL)
+	r.Any("/health", web.WrapH(uc.getHealth))
 	r.GET("/app/metrics/api", web.WrapH(uc.getMetricsAPI))
 	r.GET("/app/version/check", web.WrapH(uc.checkVersion))
 	r.POST("/app/upgrade", auth, uc.upgradeApp)

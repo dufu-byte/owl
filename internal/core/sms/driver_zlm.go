@@ -134,13 +134,13 @@ func (d *ZLMDriver) Setup(ctx context.Context, ms *MediaServer, webhookURL strin
 		GeneralMediaServerID: new(ms.ID),
 		HookEnable:           new("1"),
 		HookOnFlowReport:     new(""),
-		HookOnPlay:           new(fmt.Sprintf("%s/on_play", webhookURL)),
 
 		ProtocolEnableTs:      new("0"),
 		ProtocolEnableFmp4:    new("0"),
 		ProtocolEnableHls:     new("0"),
 		ProtocolEnableHlsFmp4: new("1"),
 
+		HookOnPlay:                     new(fmt.Sprintf("%s/on_play", webhookURL)),
 		HookOnPublish:                  new(fmt.Sprintf("%s/on_publish", webhookURL)),
 		HookOnStreamNoneReader:         new(fmt.Sprintf("%s/on_stream_none_reader", webhookURL)),
 		GeneralStreamNoneReaderDelayMS: new("30000"),

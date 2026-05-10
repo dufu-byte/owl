@@ -22,6 +22,8 @@
     Timeout = '1m0s'
     # jwt 秘钥，空串时，每次启动程序将随机赋值
     JwtSecret = '6caOiETMs8SPWNHgEKA1Jhmn9wxpjAj9'
+    # 第三方认证服务地址
+    AuthURL = ""
 
     [Server.HTTP.PProf]
       # 是否启用 pprof, 建议设置为 true
@@ -64,14 +66,14 @@
   RotationSize = 50
 
 [Sip]
-  # 服务监听的 tcp/udp 端口号
-  Port = 15060
-  # gb/t28181 20 位国标 ID
-  ID = '34020000002000000001'
-  # 注册密码
-  Password = ''
   # 对设备宣告的本机地址(可选), 为空时按连接来源自动探测, 探测不可达时回退到 Media.SDPIP
-  Host = ''
+  Host = '192.168.1.241'
+  # 服务监听的 TCP/UDP 端口号
+  Port = 15060
+  # GB/T 28181 20 位国标 ID
+  ID = '34010000002000000001'
+  # 全局注册密码，每个设备可单独设置，空串则无限制接入
+  Password = ''
 
 [Media]
   # 媒体服务器 IP
@@ -83,8 +85,8 @@
   # 媒体服务器类型 zlm/lalmax
   Type = 'zlm'
   # 用于流媒体 webhook 回调
-  WebHookIP = '192.168.31.10'
+  WebHookIP = '192.168.1.241'
   # 媒体服务器 RTP 端口范围
   RTPPortRange = '20000-20100'
   # 媒体服务器 SDP IP
-  SDPIP = '192.168.31.10'
+  SDPIP = '192.168.1.241'
