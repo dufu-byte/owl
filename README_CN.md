@@ -47,7 +47,7 @@
 
 + lalmax 已支持 zlm 接口，[lalmax](https://github.com/q191201771/lalmax)
 
-+ **lalmax-pro 有 golang 企业级流媒体的需求请联系微信 [joestar2006](https://github.com/joestarzxh)(备注留言gowvp)**
++ **[lalmax-pro/streamsvr](./docs/streamsvr_product_intro_zh.md) 有 golang 企业级流媒体的需求请联系微信 [joestar2006](https://github.com/joestarzxh)(备注留言gowvp)**
   - 对环境没有要求，不需要安装任何静态库，支持跨平台编译
   - 支持特色功能定制
   - 支持 G711(G711A/G711U) 转 AAC
