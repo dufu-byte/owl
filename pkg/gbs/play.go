@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"strconv"
 	"strings"
 	"time"
 
@@ -95,11 +96,17 @@ func (g *GB28181API) Play(in *PlayInput) error {
 	}
 	stream, _ := g.streams.LoadOrStore(key, &Streams{})
 
-	log.Debug("1. 开启RTP服务器等待接收视频流")
-	// 开启RTP服务器等待接收视频流
+	// 提前分配 SSRC，用于 ZLM 端口绑定防串流
+	ssrc := g.getSSRC(0)
+	ssrcVal, _ := strconv.ParseUint(ssrc, 10, 64)
+	stream.ssrc = ssrc
+
+	log.Debug("1. 开启RTP服务器等待接收视频流", "ssrc", ssrc)
+	// 开启RTP服务器等待接收视频流，传入 ssrc 让 ZLM 校验，防止其他设备往该端口推流
 	resp, err := g.sms.OpenRTPServer(in.SMS, zlm.OpenRTPServerRequest{
 		TCPMode:  in.StreamMode,
 		StreamID: in.Channel.ID,
+		SSRC:     ssrcVal,
 	})
 	if err != nil {
 		log.Debug("1.1. 开启RTP服务器失败", "err", err)
@@ -121,6 +128,7 @@ func (g *GB28181API) Play(in *PlayInput) error {
 			resp, err = g.sms.OpenRTPServer(in.SMS, zlm.OpenRTPServerRequest{
 				TCPMode:  in.StreamMode,
 				StreamID: in.Channel.ID,
+				SSRC:     ssrcVal,
 			})
 			if err != nil {
 				log.Debug("1.2. 重新开启RTP服务器失败", "err", err)
@@ -271,8 +279,8 @@ func (g *GB28181API) sipPlayPush2(ch *Channel, in *PlayInput, port int, stream *
 	}
 	slog.Info("域名解析成功", "原始域名", ipstr, "解析IP", ip4str)
 
-	ssrc := g.getSSRC(0)
-	stream.ssrc = ssrc
+	// SSRC 已在 Play 中提前分配并绑定到 ZLM 端口，此处直接使用
+	ssrc := stream.ssrc
 
 	body := buildPlaySDP(in.Channel.DeviceID, ch.ChannelID, ip4str, port, in.StreamMode, ssrc)
 	slog.Debug("INVITE SDP", "ssrc", ssrc, "channelID", ch.ChannelID, "body", string(body))
