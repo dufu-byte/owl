@@ -40,7 +40,7 @@ func (a *Adapter) OnStreamChanged(ctx context.Context, app, stream string) error
 		return err
 	}
 	// 更新播放状态为 false
-	if err := a.adapter.EditPlayingByID(ctx, ch.ID, false); err != nil {
+	if err := a.adapter.UpdatePlayingByID(ctx, ch.ID, false); err != nil {
 		return err
 	}
 	return a.gbs.StopPlay(ctx, &gbs.StopPlayInput{Channel: ch})

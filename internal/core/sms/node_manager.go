@@ -155,19 +155,19 @@ func (n *NodeManager) Run(bc *conf.Bootstrap, serverPort int) error {
 	}
 
 	var ms MediaServer
-	if err := n.storer.MediaServer().Edit(ctx, &ms, func(b *MediaServer) {
+	if err := n.storer.MediaServer().Update(ctx, &ms, func(b *MediaServer) {
 		setValueFn(b)
 	}, orm.Where("id=?", DefaultMediaServerID)); err != nil {
 		if !orm.IsErrRecordNotFound(err) {
 			return err
 		}
 		setValueFn(&ms)
-		if err := n.storer.MediaServer().Add(ctx, &ms); err != nil {
+		if err := n.storer.MediaServer().Create(ctx, &ms); err != nil {
 			return err
 		}
 	}
 
-	mediaServers, _, err := n.findMediaServer(ctx, &FindMediaServerInput{
+	mediaServers, _, err := n.listMediaServers(ctx, &FindMediaServerInput{
 		PagerFilter: web.NewPagerFilterMaxSize(),
 	})
 	if err != nil {
@@ -208,7 +208,7 @@ func (n *NodeManager) connection(server *MediaServer, serverPort int) error {
 	log.Info("MediaServer 连接成功")
 
 	// 更新数据库中的端口信息等
-	if err := n.storer.MediaServer().Edit(ctx, &MediaServer{}, func(b *MediaServer) {
+	if err := n.storer.MediaServer().Update(ctx, &MediaServer{}, func(b *MediaServer) {
 		// 更新字段
 		b.Ports = server.Ports
 		b.HookAliveInterval = server.HookAliveInterval
@@ -243,12 +243,12 @@ func (n *NodeManager) IsOnline(serverID string) bool {
 	return value.IsOnline
 }
 
-// findMediaServer Paginated search
-func (n *NodeManager) findMediaServer(ctx context.Context, in *FindMediaServerInput) ([]*MediaServer, int64, error) {
+// listMediaServers Paginated search
+func (n *NodeManager) listMediaServers(ctx context.Context, in *FindMediaServerInput) ([]*MediaServer, int64, error) {
 	items := make([]*MediaServer, 0)
-	total, err := n.storer.MediaServer().Find(ctx, &items, in)
+	total, err := n.storer.MediaServer().List(ctx, &items, in)
 	if err != nil {
-		return nil, 0, reason.ErrDB.Withf(`Find err[%s]`, err.Error())
+		return nil, 0, reason.ErrDB.Withf(`List err[%s]`, err.Error())
 	}
 	return items, total, nil
 }
@@ -280,8 +280,8 @@ func (n *NodeManager) CloseStreams(server *MediaServer, in zlm.CloseStreamsReque
 	return driver.CloseStreams(context.Background(), server, &in)
 }
 
-// AddStreamProxy 添加流代理
-func (n *NodeManager) AddStreamProxy(server *MediaServer, in AddStreamProxyRequest) (*zlm.AddStreamProxyResponse, error) {
+// CreateStreamProxy 添加流代理
+func (n *NodeManager) CreateStreamProxy(server *MediaServer, in AddStreamProxyRequest) (*zlm.AddStreamProxyResponse, error) {
 	driver, err := n.getDriver(server.Type)
 	if err != nil {
 		return nil, err

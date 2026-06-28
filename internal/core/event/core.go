@@ -20,19 +20,15 @@ type Core struct {
 }
 
 // NewCore create business domain
-func NewCore(store Storer) Core {
-	return Core{store: store}
+// notifier 为 nil 时，CreateEventAndNotify 只入库不推送
+func NewCore(store Storer, notifier Dispatcher) Core {
+	return Core{store: store, notifier: notifier}
 }
 
-// SetNotifier 注入 webhook 推送器，nil 表示不推送
-func (c *Core) SetNotifier(d Dispatcher) {
-	c.notifier = d
-}
-
-// AddEventAndNotify 入库成功后触发 webhook 推送，供 AI 回调 API 层使用
-// 与生成的 AddEvent 分离，保证生成文件不被污染
-func (c Core) AddEventAndNotify(ctx context.Context, in *AddEventInput) (*Event, error) {
-	out, err := c.AddEvent(ctx, in)
+// CreateEventAndNotify 入库成功后触发 webhook 推送，供 AI 回调 API 层使用
+// 与生成的 CreateEvent 分离，保证生成文件不被污染
+func (c Core) CreateEventAndNotify(ctx context.Context, in *AddEventInput) (*Event, error) {
+	out, err := c.CreateEvent(ctx, in)
 	if err != nil {
 		return nil, err
 	}

@@ -21,25 +21,25 @@ type stubEventStorer struct {
 	addCount int
 }
 
-func (s *stubEventStorer) Find(context.Context, *[]*event.Event, orm.Pager, ...orm.QueryOption) (int64, error) {
+func (s *stubEventStorer) List(context.Context, *[]*event.Event, orm.Pager, ...orm.QueryOption) (int64, error) {
 	return 0, nil
 }
 func (s *stubEventStorer) Get(context.Context, *event.Event, ...orm.QueryOption) error { return nil }
-func (s *stubEventStorer) Add(_ context.Context, _ *event.Event) error {
+func (s *stubEventStorer) Create(_ context.Context, _ *event.Event) error {
 	s.addCount++
 	return nil
 }
 
-func (s *stubEventStorer) Edit(_ context.Context, _ *event.Event, _ func(*event.Event), _ ...orm.QueryOption) error {
+func (s *stubEventStorer) Update(_ context.Context, _ *event.Event, _ func(*event.Event), _ ...orm.QueryOption) error {
 	return nil
 }
 
-func (s *stubEventStorer) Del(_ context.Context, _ *event.Event, _ ...orm.QueryOption) error {
+func (s *stubEventStorer) Delete(_ context.Context, _ *event.Event, _ ...orm.QueryOption) error {
 	return nil
 }
 func (s *stubEventStorer) Count(context.Context, ...orm.QueryOption) (int64, error)   { return 0, nil }
 func (s *stubEventStorer) Session(_ context.Context, _ ...func(*gorm.DB) error) error { return nil }
-func (s *stubEventStorer) EditWithSession(_ *gorm.DB, _ *event.Event, _ func(*event.Event) error, _ ...orm.QueryOption) error {
+func (s *stubEventStorer) UpdateWithSession(_ *gorm.DB, _ *event.Event, _ func(*event.Event) error, _ ...orm.QueryOption) error {
 	return nil
 }
 
@@ -55,8 +55,9 @@ func makeWebhookEngine(internalSecret, recvSecret string, ev *stubEventStorer) *
 	bc.Server.Webhook.RecvSecret = recvSecret
 
 	hookAPI := WebHookAPI{
-		conf:      bc,
-		eventCore: event.NewCore(&stubStorer{ev}),
+		conf: bc,
+		// TODO: 检查是否需要注入事件分发器
+		eventCore: event.NewCore(&stubStorer{ev}, nil),
 		log:       slog.Default(),
 	}
 

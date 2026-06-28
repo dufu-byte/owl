@@ -14,24 +14,24 @@ import (
 
 // DeviceStorer Instantiation interface
 type DeviceStorer interface {
-	Find(context.Context, *[]*Device, orm.Pager, ...orm.QueryOption) (int64, error)
+	List(context.Context, *[]*Device, orm.Pager, ...orm.QueryOption) (int64, error)
 	Get(context.Context, *Device, ...orm.QueryOption) error
-	Add(context.Context, *Device) error
-	Edit(context.Context, *Device, func(*Device) error, ...orm.QueryOption) error
-	Del(context.Context, *Device, ...orm.QueryOption) error
+	Create(context.Context, *Device) error
+	Update(context.Context, *Device, func(*Device) error, ...orm.QueryOption) error
+	Delete(context.Context, *Device, ...orm.QueryOption) error
 
 	Session(ctx context.Context, changeFns ...func(*gorm.DB) error) error
 }
 
-func (c Core) FindChannelsForDevice(ctx context.Context, in *FindDeviceInput) ([]*Device, int64, error) {
+func (c Core) ListChannelsForDevice(ctx context.Context, in *FindDeviceInput) ([]*Device, int64, error) {
 	items := make([]*Device, 0, in.Limit())
 
 	query := orm.NewQuery(3)
 	query.OrderBy("created_at DESC")
 
-	total, err := c.store.Device().Find(ctx, &items, in, query.Encode()...)
+	total, err := c.store.Device().List(ctx, &items, in, query.Encode()...)
 	if err != nil {
-		return nil, 0, reason.ErrDB.Withf(`Find err[%s]`, err.Error())
+		return nil, 0, reason.ErrDB.Withf(`List err[%s]`, err.Error())
 	}
 
 	for _, item := range items {
@@ -39,7 +39,7 @@ func (c Core) FindChannelsForDevice(ctx context.Context, in *FindDeviceInput) ([
 		const size = 5
 		item.Children = make([]*Channel, 0, size)
 		query := orm.NewQuery(2).OrderBy("created_at ASC").Where("did=?", item.ID)
-		_, err := c.store.Channel().Find(ctx, &item.Children, web.PagerFilter{Size: size}, query.Encode()...)
+		_, err := c.store.Channel().List(ctx, &item.Children, web.PagerFilter{Size: size}, query.Encode()...)
 		if err != nil {
 			continue
 		}
@@ -55,8 +55,8 @@ func (c Core) FindChannelsForDevice(ctx context.Context, in *FindDeviceInput) ([
 	return items, total, nil
 }
 
-// FindDevice Paginated search
-func (c Core) FindDevice(ctx context.Context, in *FindDeviceInput) ([]*Device, int64, error) {
+// ListDevices Paginated search
+func (c Core) ListDevices(ctx context.Context, in *FindDeviceInput) ([]*Device, int64, error) {
 	items := make([]*Device, 0)
 
 	query := orm.NewQuery(3)
@@ -65,9 +65,9 @@ func (c Core) FindDevice(ctx context.Context, in *FindDeviceInput) ([]*Device, i
 		query.Where("name LIKE ? OR device_id like ? OR id=?", "%"+in.Key+"%", "%"+in.Key+"%", in.Key)
 	}
 
-	total, err := c.store.Device().Find(ctx, &items, in, query.Encode()...)
+	total, err := c.store.Device().List(ctx, &items, in, query.Encode()...)
 	if err != nil {
-		return nil, 0, reason.ErrDB.Withf(`Find err[%s]`, err.Error())
+		return nil, 0, reason.ErrDB.Withf(`List err[%s]`, err.Error())
 	}
 	return items, total, nil
 }
@@ -95,8 +95,8 @@ func (c Core) GetDeviceByDeviceID(ctx context.Context, deviceID string) (*Device
 	return &out, nil
 }
 
-// AddDevice Insert into database
-func (c Core) AddDevice(ctx context.Context, in *AddDeviceInput) (*Device, error) {
+// CreateDevice Insert into database
+func (c Core) CreateDevice(ctx context.Context, in *AddDeviceInput) (*Device, error) {
 	var out Device
 	if err := copier.Copy(&out, in); err != nil {
 		slog.ErrorContext(ctx, "Copy", "err", err)
@@ -121,11 +121,11 @@ func (c Core) AddDevice(ctx context.Context, in *AddDeviceInput) (*Device, error
 	}
 
 	// 持久化到数据库
-	if err := c.store.Device().Add(ctx, &out); err != nil {
+	if err := c.store.Device().Create(ctx, &out); err != nil {
 		if orm.IsDuplicatedKey(err) {
 			return nil, reason.ErrDB.SetMsg("国标 ID 重复，请勿重复添加")
 		}
-		return nil, reason.ErrDB.Withf(`Add err[%s]`, err.Error())
+		return nil, reason.ErrDB.Withf(`Create err[%s]`, err.Error())
 	}
 
 	// 初始化协议连接（失败不影响设备添加）
@@ -138,10 +138,10 @@ func (c Core) AddDevice(ctx context.Context, in *AddDeviceInput) (*Device, error
 	return &out, nil
 }
 
-// EditDevice Update object information
-func (c Core) EditDevice(ctx context.Context, in *EditDeviceInput, id string) (*Device, error) {
+// UpdateDevice Update object information
+func (c Core) UpdateDevice(ctx context.Context, in *EditDeviceInput, id string) (*Device, error) {
 	var out Device
-	if err := c.store.Device().Edit(ctx, &out, func(b *Device) error {
+	if err := c.store.Device().Update(ctx, &out, func(b *Device) error {
 		if err := copier.Copy(b, in); err != nil {
 			slog.ErrorContext(ctx, "Copy", "err", err)
 		}
@@ -156,7 +156,7 @@ func (c Core) EditDevice(ctx context.Context, in *EditDeviceInput, id string) (*
 
 		return nil
 	}, orm.Where("id=?", id)); err != nil {
-		return nil, reason.ErrDB.Withf(`Edit err[%s] id[%s]`, err.Error(), id)
+		return nil, reason.ErrDB.Withf(`Update err[%s] id[%s]`, err.Error(), id)
 	}
 
 	protocol, ok := c.protocols[out.GetType()]
@@ -168,11 +168,11 @@ func (c Core) EditDevice(ctx context.Context, in *EditDeviceInput, id string) (*
 	return &out, nil
 }
 
-// DelDevice Delete object
-func (c Core) DelDevice(ctx context.Context, id string) (*Device, error) {
+// DeleteDevice Delete object
+func (c Core) DeleteDevice(ctx context.Context, id string) (*Device, error) {
 	var dev Device
-	if err := c.store.Device().Del(ctx, &dev, orm.Where("id=?", id)); err != nil {
-		return nil, reason.ErrDB.Withf(`Del err[%s]`, err.Error())
+	if err := c.store.Device().Delete(ctx, &dev, orm.Where("id=?", id)); err != nil {
+		return nil, reason.ErrDB.Withf(`Delete err[%s]`, err.Error())
 	}
 
 	if err := c.store.Channel().Session(ctx, func(tx *gorm.DB) error {
@@ -188,7 +188,7 @@ func (c Core) DelDevice(ctx context.Context, id string) (*Device, error) {
 	}, func(d *gorm.DB) error {
 		return d.Where("did=?", id).Delete(&Channel{}).Error
 	}); err != nil {
-		return nil, reason.ErrDB.Withf(`DelChannel err[%s]`, err.Error())
+		return nil, reason.ErrDB.Withf(`DeleteChannel err[%s]`, err.Error())
 	}
 
 	return &dev, nil

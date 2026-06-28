@@ -205,7 +205,7 @@ func (w WebHookAPI) onPlay(c *gin.Context, in *onPublishInput) (DefaultOutput, e
 	w.log.InfoContext(ctx, "webhook onPlay", "app", in.App, "stream", in.Stream, "schema", in.Schema)
 
 	// 更新通道的播放状态（所有协议统一处理）
-	if _, err := w.ipcCore.EditChannelPlaying(ctx, in.Stream, true); err != nil {
+	if _, err := w.ipcCore.UpdateChannelPlaying(ctx, in.Stream, true); err != nil {
 		w.log.WarnContext(ctx, "更新播放状态失败", "stream", in.Stream, "err", err)
 	}
 
@@ -226,7 +226,7 @@ func (w WebHookAPI) onStreamNoneReader(c *gin.Context, in *onStreamNoneReaderInp
 	// 禁用录像时，直接关闭流
 	if w.uc.Conf.Server.Recording.Disabled {
 		// 更新通道的播放状态为未播放（所有协议统一处理）
-		if _, err := w.ipcCore.EditChannelPlaying(ctx, in.Stream, false); err != nil {
+		if _, err := w.ipcCore.UpdateChannelPlaying(ctx, in.Stream, false); err != nil {
 			w.log.WarnContext(ctx, "更新播放状态失败", "stream", in.Stream, "err", err)
 		}
 		return onStreamNoneReaderOutput{Close: true}, nil
@@ -247,7 +247,7 @@ func (w WebHookAPI) onStreamNoneReader(c *gin.Context, in *onStreamNoneReaderInp
 	w.log.InfoContext(ctx, "无人观看判断", "stream", in.Stream, "record_mode", ch.Ext.GetRecordMode(), "close", shouldClose)
 	if shouldClose {
 		// 更新通道的播放状态为未播放（所有协议统一处理）
-		if _, err := w.ipcCore.EditChannelPlaying(ctx, in.Stream, false); err != nil {
+		if _, err := w.ipcCore.UpdateChannelPlaying(ctx, in.Stream, false); err != nil {
 			w.log.WarnContext(ctx, "更新播放状态失败", "stream", in.Stream, "err", err)
 		}
 		return onStreamNoneReaderOutput{Close: true}, nil
@@ -336,7 +336,7 @@ func (w WebHookAPI) onRecordMP4(c *gin.Context, in *onRecordMP4Input) (DefaultOu
 	}
 
 	// 入库
-	_, err = w.recordingCore.AddRecording(ctx, &recording.AddRecordingInput{
+	_, err = w.recordingCore.CreateRecording(ctx, &recording.AddRecordingInput{
 		CID:       cid,
 		App:       in.App,
 		Stream:    in.Stream,

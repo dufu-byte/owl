@@ -25,6 +25,17 @@ func NewMetadataAPI(core metadata.Core) MetadataAPI {
 	return MetadataAPI{metadataCore: core}
 }
 
+// metadataIDInput 元数据 ID 路径参数
+type metadataIDInput struct {
+	ID string `uri:"id" binding:"required"`
+}
+
+// saveMetadataInput 保存元数据的请求参数（路径 ID + 请求体）
+type saveMetadataInput struct {
+	ID string `uri:"id" binding:"required"`
+	metadata.SaveMetadataInput
+}
+
 // RegisterMetadata 注册通用数据持久化路由
 func RegisterMetadata(g gin.IRouter, api MetadataAPI, handler ...gin.HandlerFunc) {
 	group := g.Group("/metadatas", handler...)
@@ -41,21 +52,19 @@ func RegisterMetadata(g gin.IRouter, api MetadataAPI, handler ...gin.HandlerFunc
 // }
 
 // getMetadata 按 ID 查询数据
-func (a MetadataAPI) getMetadata(c *gin.Context, _ *struct{}) (*metadata.Metadata, error) {
-	metadataID := c.Param("id")
-	return a.metadataCore.GetMetadata(c.Request.Context(), metadataID)
+func (a MetadataAPI) getMetadata(c *gin.Context, in *metadataIDInput) (*metadata.Metadata, error) {
+	return a.metadataCore.GetMetadata(c.Request.Context(), in.ID)
 }
 
 // saveMetadata 幂等保存：已存在则更新，不存在则创建
-func (a MetadataAPI) saveMetadata(c *gin.Context, in *metadata.SaveMetadataInput) (*metadata.Metadata, error) {
-	metadataID := c.Param("id")
+func (a MetadataAPI) saveMetadata(c *gin.Context, in *saveMetadataInput) (*metadata.Metadata, error) {
 	in.CreatedBy = web.GetUsername(c)
 	in.LastUpdatedBy = in.CreatedBy
-	return a.metadataCore.SaveMetadata(c.Request.Context(), in, metadataID)
+	return a.metadataCore.SaveMetadata(c.Request.Context(), &in.SaveMetadataInput, in.ID)
 }
 
 // delMetadata 删除数据（保留代码，当前不提供）
 // func (a MetadataAPI) delMetadata(c *gin.Context, _ *struct{}) (*metadata.Metadata, error) {
 // 	metadataID := c.Param("id")
-// 	return a.metadataCore.DelMetadata(c.Request.Context(), metadataID)
+// 	return a.metadataCore.DeleteMetadata(c.Request.Context(), metadataID)
 // }

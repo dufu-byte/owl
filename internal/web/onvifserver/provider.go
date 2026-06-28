@@ -41,7 +41,7 @@ func NewStreamProvider(ipcCore ipc.Core, smsCore sms.Core, cfg *conf.Bootstrap) 
 // refreshChannels 从数据库拉取全部通道与设备名，供 ONVIF Profile 列表使用。
 func (p *StreamProvider) refreshChannels() {
 	ctx := context.Background()
-	channels, _, err := p.ipc.FindChannel(ctx, &ipc.FindChannelInput{
+	channels, _, err := p.ipc.ListChannels(ctx, &ipc.FindChannelInput{
 		PagerFilter: web.NewPagerFilterMaxSize(),
 	})
 	if err != nil {
@@ -49,7 +49,7 @@ func (p *StreamProvider) refreshChannels() {
 		return
 	}
 	byDID := make(map[string]deviceMeta)
-	devs, _, err := p.ipc.FindDevice(ctx, &ipc.FindDeviceInput{
+	devs, _, err := p.ipc.ListDevices(ctx, &ipc.FindDeviceInput{
 		PagerFilter: web.NewPagerFilterMaxSize(),
 	})
 	if err != nil {

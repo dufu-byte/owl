@@ -63,7 +63,7 @@ func (g *GB28181API) StopPlay(ctx context.Context, in *StopPlayInput) error {
 	defer ch.device.playMutex.Unlock()
 
 	defer func() {
-		g.svr.gb.core.EditPlaying(ctx, in.Channel.DeviceID, in.Channel.ChannelID, false)
+		g.svr.gb.core.UpdatePlaying(ctx, in.Channel.DeviceID, in.Channel.ChannelID, false)
 	}()
 	return g.stopPlay(ch, in)
 }
@@ -144,11 +144,11 @@ func (g *GB28181API) Play(in *PlayInput) error {
 	if err := g.sipPlayPush2(ch, in, resp.Port, stream); err != nil {
 		log.Debug("2.1. 发送SDP请求失败", "err", err)
 		// INVITE 失败（含 400 Bad Request），确保播放状态被清除
-		g.svr.gb.core.EditPlaying(context.TODO(), in.Channel.DeviceID, in.Channel.ChannelID, false)
+		g.svr.gb.core.UpdatePlaying(context.TODO(), in.Channel.DeviceID, in.Channel.ChannelID, false)
 		return err
 	}
 
-	g.svr.gb.core.EditPlaying(context.TODO(), in.Channel.DeviceID, in.Channel.ChannelID, true)
+	g.svr.gb.core.UpdatePlaying(context.TODO(), in.Channel.DeviceID, in.Channel.ChannelID, true)
 
 	return nil
 }

@@ -159,23 +159,23 @@ type IPCBundle struct {
 }
 
 // NewIPCCoreWithProtocols 创建 IPC Core 和 Protocols
-// 通过在函数内部分两步创建来解决：先创建不含 protocols 的 Core，再创建 Protocols，最后注入
+// 先用临时 Core 构建 protocols（adapter 仅存引用，运行时才调用方法），再创建含 protocols 的最终 Core
 func NewIPCCoreWithProtocols(store ipc.Storer, uni uniqueid.Core, adapter ipc.Adapter, smsCore sms.Core, gbsServer *gbs.Server, conf *conf.Bootstrap) IPCBundle {
-	// 第一步：创建不含 protocols 的 ipc.Core
-	ipcCore := ipc.NewCore(store, uni, nil)
+	// 第一步：创建临时 Core（adapter 构造时仅存储引用，不依赖 protocols）
+	tmpCore := ipc.NewCore(store, uni, nil)
 
-	// 第二步：创建 protocols（需要 ipc.Core）
+	// 第二步：构建 protocols（adapter 内部持有 tmpCore 的值副本，运行时访问 DB 方法不依赖 protocols）
 	protocols := make(map[string]ipc.Protocoler)
 	protocols[ipc.TypeOnvif] = onvifadapter.NewAdapter(adapter, smsCore)
-	protocols[ipc.TypeRTSP] = rtspadapter.NewAdapter(ipcCore, smsCore)
-	protocols[ipc.TypeRTMP] = rtmpadapter.NewAdapter(ipcCore, conf)
+	protocols[ipc.TypeRTSP] = rtspadapter.NewAdapter(tmpCore, smsCore)
+	protocols[ipc.TypeRTMP] = rtmpadapter.NewAdapter(tmpCore, conf)
 	protocols[ipc.TypeGB28181] = gbadapter.NewAdapter(adapter, gbsServer, smsCore)
 
-	// 第三步：将 protocols 注入到 ipc.Core
-	ipcCore.SetProtocols(protocols)
+	// 第三步：创建含 protocols 的最终 Core
+	core := ipc.NewCore(store, uni, protocols)
 
 	return IPCBundle{
-		Core:      ipcCore,
+		Core:      core,
 		Protocols: protocols,
 	}
 }
@@ -201,11 +201,7 @@ func NewNotifier(conf *conf.Bootstrap) *push.Notifier {
 }
 
 // NewEventCoreWithNotifier 在 NewEventCore 基础上注入 webhook 推送器
-// notifier 为 nil 时，AddEventAndNotify 只入库不推送
-func NewEventCoreWithNotifier(conf *conf.Bootstrap, db *gorm.DB, notifier *push.Notifier) event.Core {
-	c := NewEventCore(db, conf)
-	if notifier != nil {
-		c.SetNotifier(notifier)
-	}
-	return c
+// notifier 为 nil 时，CreateEventAndNotify 只入库不推送
+func NewEventCoreWithNotifier(conf *conf.Bootstrap, db *gorm.DB, notifier event.Dispatcher) event.Core {
+	return NewEventCore(db, conf, notifier)
 }

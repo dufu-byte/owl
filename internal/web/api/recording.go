@@ -48,17 +48,28 @@ func NewRecordingAPI(core recording.Core, conf *conf.Bootstrap) RecordingAPI {
 	return RecordingAPI{recordingCore: core, conf: conf}
 }
 
+// recordingIDInput 录像 ID 路径参数
+type recordingIDInput struct {
+	ID int64 `uri:"id" binding:"required"`
+}
+
+// updateRecordingInput 更新录像的请求参数（路径 ID + 请求体）
+type updateRecordingInput struct {
+	ID int64 `uri:"id" binding:"required"`
+	recording.EditRecordingInput
+}
+
 func RegisterRecording(g gin.IRouter, api RecordingAPI, handler ...gin.HandlerFunc) {
 	{
 		group := g.Group("/recordings", handler...)
-		group.GET("", web.WrapH(api.findRecordings))
+		group.GET("", web.WrapH(api.listRecordings))
 		group.GET("/timeline", web.WrapH(api.getTimeline))
 		group.GET("/monthly", web.WrapH(api.getMonthlyStats))
 		// HLS 播放列表（根据通道 ID 和时间范围生成 m3u8）
 		group.GET("/channels/:cid/index.m3u8", api.channelPlaylist)
 		group.GET("/:id", web.WrapH(api.getRecording))
-		group.PUT("/:id", web.WrapH(api.editRecording))
-		group.DELETE("/:id", web.WrapH(api.delRecording))
+		group.PUT("/:id", web.WrapH(api.updateRecording))
+		group.DELETE("/:id", web.WrapH(api.deleteRecording))
 		group.GET("/:id/download", api.downloadRecording)
 	}
 
@@ -71,10 +82,10 @@ func RegisterRecording(g gin.IRouter, api RecordingAPI, handler ...gin.HandlerFu
 	}
 }
 
-// findRecordings 分页查询录像列表
-func (a RecordingAPI) findRecordings(c *gin.Context, in *recording.FindRecordingInput) (any, error) {
+// listRecordings 分页查询录像列表
+func (a RecordingAPI) listRecordings(c *gin.Context, in *recording.FindRecordingInput) (any, error) {
 	ctx := web.WithContext(c.Request)
-	items, total, err := a.recordingCore.FindRecordings(ctx, in)
+	items, total, err := a.recordingCore.ListRecordings(ctx, in)
 	return gin.H{"items": items, "total": total}, err
 }
 
@@ -84,19 +95,16 @@ func (a RecordingAPI) getTimeline(c *gin.Context, in *recording.TimelineInput) (
 	return gin.H{"items": items}, err
 }
 
-func (a RecordingAPI) getRecording(c *gin.Context, _ *struct{}) (*recording.Recording, error) {
-	recordingID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
-	return a.recordingCore.GetRecording(c.Request.Context(), recordingID)
+func (a RecordingAPI) getRecording(c *gin.Context, in *recordingIDInput) (*recording.Recording, error) {
+	return a.recordingCore.GetRecording(c.Request.Context(), in.ID)
 }
 
-func (a RecordingAPI) editRecording(c *gin.Context, in *recording.EditRecordingInput) (*recording.Recording, error) {
-	recordingID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
-	return a.recordingCore.EditRecording(c.Request.Context(), in, recordingID)
+func (a RecordingAPI) updateRecording(c *gin.Context, in *updateRecordingInput) (*recording.Recording, error) {
+	return a.recordingCore.UpdateRecording(c.Request.Context(), &in.EditRecordingInput, in.ID)
 }
 
-func (a RecordingAPI) delRecording(c *gin.Context, _ *struct{}) (*recording.Recording, error) {
-	recordingID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
-	return a.recordingCore.DelRecording(c.Request.Context(), recordingID)
+func (a RecordingAPI) deleteRecording(c *gin.Context, in *recordingIDInput) (*recording.Recording, error) {
+	return a.recordingCore.DeleteRecording(c.Request.Context(), in.ID)
 }
 
 // getMonthlyStats 获取月度录像统计
@@ -152,7 +160,7 @@ func (a RecordingAPI) channelPlaylist(c *gin.Context) {
 
 	// 获取时间范围内的录像列表（需要完整路径信息）
 	ctx := web.WithContext(c.Request)
-	recordings, _, err := a.recordingCore.FindRecordings(ctx, &recording.FindRecordingInput{
+	recordings, _, err := a.recordingCore.ListRecordings(ctx, &recording.FindRecordingInput{
 		CID:         cid,
 		PagerFilter: web.PagerFilter{Page: 1, Size: 10000},
 		DateFilter:  web.DateFilter{StartMs: startMs, EndMs: endMs},
